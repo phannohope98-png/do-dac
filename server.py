@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parent
 DB = Path(os.environ.get('ANALYTICS_DB', str(ROOT / 'private-data' / 'analytics.sqlite')))
 SITE = os.environ.get('ANALYTICS_SITE', 'thesun')
 ORIGINS = set(os.environ.get('ANALYTICS_ORIGINS', 'http://127.0.0.1:8790').split(','))
+REPORT_ORIGINS = set(os.environ.get('ANALYTICS_REPORT_ORIGINS', 'https://phannohope98-png.github.io').split(','))
 TOKEN = os.environ.get('ANALYTICS_ADMIN_TOKEN') or secrets.token_urlsafe(24)
 RETENTION = max(1, min(365, int(os.environ.get('ANALYTICS_RETENTION_DAYS', '90'))))
 TYPES = {'page_view', 'click', 'scroll', 'engagement', 'page_hidden', 'form_submit', 'goal'}
@@ -78,7 +79,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Cache-Control','no-store')
         self.send_header('X-Content-Type-Options','nosniff')
         self.send_header('Referrer-Policy','no-referrer')
-        if cors and self.headers.get('Origin') in ORIGINS:
+        if cors and self.headers.get('Origin') in (REPORT_ORIGINS if urlparse(self.path).path == '/api/events' else ORIGINS):
             self.send_header('Access-Control-Allow-Origin',self.headers['Origin'])
             self.send_header('Vary','Origin')
         self.end_headers()
@@ -89,12 +90,13 @@ class Handler(BaseHTTPRequestHandler):
         return hmac.compare_digest(supplied.encode('utf-8'), ('Bearer '+TOKEN).encode('utf-8'))
 
     def do_OPTIONS(self):
-        if self.headers.get('Origin') not in ORIGINS:
+        report = urlparse(self.path).path == '/api/events'
+        if self.headers.get('Origin') not in (REPORT_ORIGINS if report else ORIGINS):
             return self.respond(403, {'error':'origin'})
         self.send_response(204)
         self.send_header('Access-Control-Allow-Origin',self.headers['Origin'])
-        self.send_header('Access-Control-Allow-Methods','POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers','Content-Type')
+        self.send_header('Access-Control-Allow-Methods','GET, OPTIONS' if report else 'POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers','Authorization' if report else 'Content-Type')
         self.send_header('Vary','Origin')
         self.end_headers()
 
@@ -118,13 +120,13 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         url = urlparse(self.path)
         if url.path == '/api/events':
-            if not self.authorized(): return self.respond(401,{'error':'unauthorized'})
+            if not self.authorized(): return self.respond(401,{'error':'unauthorized'},cors=True)
             try: days = max(1,min(90,int(parse_qs(url.query).get('days',['7'])[0])))
             except ValueError: return self.respond(400,{'error':'days'})
             with connection() as conn:
                 rows = conn.execute('SELECT id,session,type,page,at,data FROM events WHERE received >= ? ORDER BY at DESC LIMIT 50000',(int(time.time())-days*86400,)).fetchall()
             events = [dict(row, data=json.loads(row['data'])) for row in rows]
-            return self.respond(200,{'events':events,'limited':len(events)==50000,'site':SITE})
+            return self.respond(200,{'events':events,'limited':len(events)==50000,'site':SITE},cors=True)
         files = {'/':'dashboard.html','/tracker.js':'tracker.js','/demo':'demo.html','/demo/article':'demo.html'}
         filename = files.get(url.path)
         if not filename: return self.respond(404,{'error':'not found'})

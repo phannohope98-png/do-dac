@@ -122,6 +122,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         url = urlparse(self.path)
+        if url.path == '/health':
+            try:
+                with connection() as conn: conn.execute('SELECT 1 FROM events LIMIT 1').fetchone()
+                return self.respond(200,{'status':'ok'})
+            except sqlite3.Error: return self.respond(503,{'status':'database unavailable'})
         if url.path in ('/api/events', '/api/sites'):
             query = parse_qs(url.query)
             try: days = max(1,min(90,int(query.get('days',['7'])[0])))
@@ -145,4 +150,6 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == '__main__':
     initialize()
     print('Analytics: http://127.0.0.1:8790', flush=True)
-    ThreadingHTTPServer((os.environ.get('ANALYTICS_BIND','127.0.0.1'),int(os.environ.get('ANALYTICS_PORT','8790'))),Handler).serve_forever()
+    bind = os.environ.get('ANALYTICS_BIND','0.0.0.0' if os.environ.get('PORT') else '127.0.0.1')
+    port = int(os.environ.get('PORT',os.environ.get('ANALYTICS_PORT','8790')))
+    ThreadingHTTPServer((bind,port),Handler).serve_forever()

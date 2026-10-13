@@ -8,7 +8,7 @@
 const $=id=>document.getElementById(id),esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let endpoint='',selected='',events=[],groups={},requestNumber=0;
 try{endpoint=localStorage.getItem('dd-endpoint')||'';}catch{}
-if(!endpoint&&['127.0.0.1','localhost'].includes(location.hostname))endpoint=location.origin;
+if(!endpoint&&location.protocol!=='file:'&&!location.hostname.endsWith('.github.io'))endpoint=location.origin;
 $('endpoint').value=endpoint;
 const tally=values=>values.reduce((map,v)=>(map[v]=(map[v]||0)+1,map),Object.create(null));
 function snippet(){ $('snippet').textContent=endpoint?'<script defer src="'+endpoint+'/tracker.js"><'+'/script>':'Nhập địa chỉ máy chủ nhận dữ liệu để tạo mã gắn dùng chung.'; }

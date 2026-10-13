@@ -1,0 +1,23 @@
+# Requires a paid service and persistent disk; do not deploy without reviewing cost.
+services:
+  - type: web
+    name: do-dac
+    runtime: docker
+    plan: starter
+    healthCheckPath: /health
+    numInstances: 1
+    disk:
+      name: visitor-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: ANALYTICS_DB
+        value: /var/data/analytics.sqlite
+      - key: ANALYTICS_BIND
+        value: 0.0.0.0
+      - key: ANALYTICS_ORIGINS
+        sync: false
+      - key: ANALYTICS_REPORT_ORIGINS
+        value: https://phannohope98-png.github.io
+      - key: ANALYTICS_RETENTION_DAYS
+        value: "90"

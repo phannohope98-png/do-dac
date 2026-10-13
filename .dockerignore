@@ -1,0 +1,7 @@
+private-data
+__pycache__
+*.sqlite*
+.env
+.git
+tmp*
+test-data-*

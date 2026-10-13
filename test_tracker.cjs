@@ -1,0 +1,34 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const {randomUUID} = require('node:crypto');
+const source = fs.readFileSync(__dirname + '/tracker.js', 'utf8');
+function setup({blocked=false,external=false}={}) {
+  const listeners = {}, stored = new Map(), requests = [], intervals = new Map();
+  const document = {currentScript:{dataset:{endpoint:'https://analytics.example/collect',site:'thesun',consent:external?'external':''}},referrer:'',hidden:false,documentElement:{scrollHeight:2000},addEventListener(name,fn){listeners[name]=fn;}};
+  const ctx = {document,window:{},navigator:{globalPrivacyControl:blocked,userAgent:'Chrome/120',sendBeacon(){return true;}},location:{href:'https://example.com/article?email=private',origin:'https://example.com',pathname:'/article',search:'?email=private'},history:{pushState(){},replaceState(){}},crypto:{randomUUID},URL,URLSearchParams,Date,JSON,Math,sessionStorage:{getItem:key=>stored.get(key),setItem:(key,value)=>stored.set(key,value)},addEventListener(name,fn){listeners[name]=fn;},setInterval(fn){intervals.set(1,fn);return 1;},clearInterval(id){intervals.delete(id);},fetch:async(url,options)=>{requests.push(JSON.parse(options.body));return {ok:true};},innerHeight:500,scrollY:800};
+  vm.runInNewContext(source,ctx);
+  return {ctx,listeners,requests,intervals};
+}
+const automatic = setup();
+assert.equal(automatic.intervals.size,1,'starts automatically, without banner or DOM creation');
+automatic.intervals.get(1)();
+assert.equal(automatic.requests[0].events[0].type,'page_view');
+assert.equal(automatic.requests[0].events[0].page,'/article');
+assert.ok(!JSON.stringify(automatic.requests).includes('private'));
+const telephone = {dataset:{},tagName:'A',getAttribute:()=> 'tel:0900000000',closest:()=>null};
+automatic.listeners.click({target:{closest:()=>telephone}});
+automatic.listeners.scroll();
+automatic.intervals.get(1)();
+const events=automatic.requests.flatMap(r=>r.events);
+assert.ok(events.some(e=>e.type==='click' && e.data.name==='Bấm gọi điện' && e.data.target==='tel'));
+assert.ok(!JSON.stringify(events).includes('0900000000'));
+assert.ok(events.some(e=>e.type==='scroll' && e.data.percent===50));
+automatic.ctx.window.SolarAnalytics.stop();
+assert.equal(automatic.intervals.size,0);
+automatic.ctx.window.SolarAnalytics.start();
+assert.equal(automatic.intervals.size,1);
+const privateBrowser=setup({blocked:true});
+assert.equal(privateBrowser.intervals.size,0);privateBrowser.ctx.window.SolarAnalytics.start();assert.equal(privateBrowser.intervals.size,0);
+const external=setup({external:true});assert.equal(external.intervals.size,0);external.ctx.window.SolarAnalytics.start();assert.equal(external.intervals.size,1);
+console.log('Tracker: automatic start, click-to-call, scroll, redaction, stop/start, GPC and external mode passed.');

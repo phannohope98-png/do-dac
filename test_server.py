@@ -67,6 +67,14 @@ class CollectorTests(unittest.TestCase):
         self.assertIn('second.example',[s['site'] for s in json.loads(body)['sites']])
     def test_hostname_cannot_override_origin(self):
         self.assertEqual(self.request('/collect',{'site':'other.example','events':[self.event()]},{'Origin':'http://127.0.0.1:8790'})[0],400)
+    def test_section_event(self):
+        event=self.event(type='section_view',data={'name':'Bang gia','section':'prices','seconds':5,'y':1200,'viewport':800,'final':True,'password':'secret'})
+        self.assertEqual(self.request('/collect',{'site':'127.0.0.1','events':[event]},{'Origin':'http://127.0.0.1:8790'})[0],200)
+        status,body=self.request('/api/events?site=127.0.0.1')
+        item=next(e for e in json.loads(body)['events'] if e['id']==event['id'])
+        self.assertEqual(item['data']['y'],1200)
+        self.assertTrue(item['data']['final'])
+        self.assertNotIn('password',item['data'])
     def test_invalid_time(self): self.assertEqual(self.request('/collect',{'site':'127.0.0.1','events':[self.event(at='yesterday')]},{'Origin':'http://127.0.0.1:8790'})[0],400)
 
 if __name__=='__main__':unittest.main()

@@ -14,6 +14,7 @@ const automatic = setup();
 assert.equal(automatic.intervals.size,1,'starts automatically, without banner or DOM creation');
 automatic.intervals.get(1)();
 assert.equal(automatic.requests[0].events[0].type,'page_view');
+assert.ok(automatic.requests[0].events.some(e=>e.type==='section_view' && e.data.name==='Đầu trang'));
 assert.equal(automatic.requests[0].site,'example.com','domain automatically overrides old site label');
 assert.equal(automatic.requests[0].events[0].page,'/article');
 assert.ok(!JSON.stringify(automatic.requests).includes('private'));

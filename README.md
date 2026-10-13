@@ -74,3 +74,14 @@ node test_tracker.cjs
 9 kiểm thử backend và kiểm thử tracker: nhận đa website, tách dữ liệu, chống tên miền ghi đè, không đăng nhập, giới hạn payload, chống ghi trùng, lọc query/trường không được phép, tự chạy, gọi điện không ghi số, mức cuộn, GPC và tắt/bật.
 
 Bộ mã chưa được gắn vào website công ty. Không chứa dữ liệu đo thử hoặc thông tin đăng nhập hosting trong repository.
+
+## Đo vị trí khách dừng trong bài
+
+Tracker tự lấy các tiêu đề h2/h3 trong main/article làm mốc khu vực. Để rõ và ổn định hơn, gắn tên từng khối nội dung công khai:
+
+```html
+<section id="bao-gia" data-analytics-section="Bảng giá lắp đặt">...</section>
+<section id="lien-he" data-analytics-section="Liên hệ tư vấn">...</section>
+```
+
+Báo cáo ghi tên khu vực tại đường ngang 40% màn hình, vị trí cuộn pixel, chiều cao màn hình, thời gian hoạt động lấy mẫu mỗi 5 giây, tọa độ nhấp và khu vực cuối quan sát khi ẩn/rời. Không ghi toàn bộ văn bản trang hay nội dung nhập. Không dùng tên/tiêu đề vùng chứa thông tin cá nhân. Tiêu đề/DOM thay đổi thì tên vùng tự nhận có thể thay đổi; thuộc tính section giúp giữ nhãn ổn định. Vị trí pixel phụ thuộc kích thước màn hình và bố cục, nên dùng tên khu vực để so sánh. Không ghi chuyển động con trỏ liên tục, không quay màn hình và không suy ra hướng nhìn.

@@ -15,7 +15,7 @@ DB = Path(os.environ.get('ANALYTICS_DB', str(ROOT / 'private-data' / 'analytics.
 ORIGINS = set(os.environ.get('ANALYTICS_ORIGINS', 'http://127.0.0.1:8790').split(','))
 REPORT_ORIGINS = set(os.environ.get('ANALYTICS_REPORT_ORIGINS', 'https://phannohope98-png.github.io').split(','))
 RETENTION = max(1, min(365, int(os.environ.get('ANALYTICS_RETENTION_DAYS', '90'))))
-TYPES = {'page_view', 'click', 'scroll', 'engagement', 'page_hidden', 'form_submit', 'goal'}
+TYPES = {'page_view', 'click', 'scroll', 'engagement', 'page_hidden', 'form_submit', 'goal', 'section_view'}
 
 @contextmanager
 def connection():
@@ -53,8 +53,18 @@ def validate(event, site):
     incoming = event.get('data', {})
     if not isinstance(incoming, dict): raise ValueError('data')
     data = {}
-    allowed = {'page_view': ['referrer','device','browser','source','medium','campaign'], 'click':['name','target'], 'goal':['name'], 'form_submit':['name']}
+    allowed = {'page_view': ['referrer','device','browser','source','medium','campaign'], 'click':['name','target','section','region'], 'section_view':['name','section'], 'goal':['name'], 'form_submit':['name']}
     for field in allowed.get(kind, []): data[field] = clean_text(incoming.get(field, ''), 300 if field in ('referrer','target') else 80)
+    if kind in ('section_view','click'):
+        for field in ('x','y','viewport'):
+            if field in incoming:
+                if type(incoming[field]) is not int or not 0 <= incoming[field] <= 10000000: raise ValueError(field)
+                data[field] = incoming[field]
+    if kind == 'section_view':
+        seconds = incoming.get('seconds',0)
+        if type(seconds) is not int or not 0 <= seconds <= 60: raise ValueError('seconds')
+        data['seconds'] = seconds
+        data['final'] = incoming.get('final') is True
     if kind == 'scroll':
         if incoming.get('percent') not in (25,50,75,100): raise ValueError('scroll')
         data['percent'] = incoming['percent']

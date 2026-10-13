@@ -2,8 +2,8 @@
 (() => {
   'use strict';
   const script = document.currentScript;
-  const endpoint = script?.dataset.endpoint;
-  const site = script?.dataset.site || 'website';
+  const endpoint = script?.dataset.endpoint || (script?.src ? new URL('collect', script.src).href : '');
+  const site = location.hostname;
   if (!endpoint || window.SolarAnalytics) return;
   const blocked = navigator.globalPrivacyControl || navigator.doNotTrack === '1';
   let enabled = false, queue = [], timer, session, lastActivity = Date.now(), active = 0;
@@ -55,6 +55,8 @@
     const target = /^(tel:|mailto:)/i.test(href) ? href.split(':')[0] : safePath(href);
     event('click', {name:label(el.dataset.analytics) || (target === 'tel' ? 'Bấm gọi điện' : target === 'mailto' ? 'Bấm email' : el.tagName === 'A' ? 'link' : 'button'), target:href ? target : ''});
     if (el.dataset.analyticsGoal) event('goal', {name:label(el.dataset.analyticsGoal)});
+    else if (target === 'tel') event('goal', {name:'Bấm gọi điện'});
+    else if (/^(www\.)?(zalo\.me|zalo\.com)$/.test(target)) event('goal', {name:'Mở Zalo'});
   });
   document.addEventListener('submit', e => { if (e.target.dataset.analytics) event('form_submit', {name:label(e.target.dataset.analytics)}); });
   addEventListener('scroll', () => { const total = document.documentElement.scrollHeight - innerHeight; const depth = total > 0 ? Math.round(scrollY / total * 100) : 100; [25,50,75,100].forEach(percent => { if (depth >= percent && !milestones.has(percent)) {milestones.add(percent); event('scroll', {percent});} }); }, {passive:true});

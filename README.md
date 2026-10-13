@@ -1,78 +1,76 @@
-# Solar Journey — đo hành trình truy cập website
+# Đo Đạc — một mã gắn, nhiều website
 
-Bộ mã tự lưu dữ liệu: `tracker.js` gắn vào website; `server.py` nhận dữ liệu vào SQLite; `dashboard.html` xem biểu đồ và hành trình. Không có tài khoản/mật khẩu website của bạn trong bộ mã.
+Không có màn hình đăng nhập. Màn hình đầu liệt kê tên miền đã gửi dữ liệu. Bấm một website để xem riêng lượt xem, nút gọi/Zalo, bảng trang, luồng chuyển bài, nguồn vào, thiết bị và hành trình từng phiên.
 
-## Đo được gì?
+## Mã duy nhất gắn trên mọi website
 
-- Phiên ẩn danh, thiết bị Mobile/Desktop, nhóm trình duyệt.
-- Trang đã xem và thứ tự chuyển trang; nguồn giới thiệu hoặc UTM source/medium/campaign.
-- Link/nút đã nhấp, form đã gửi (không lấy nội dung), mục tiêu đánh dấu.
-- Mốc cuộn 25/50/75/100%, thời gian trang hiện và có hoạt động gần đây.
-- Trang cuối quan sát được, biểu đồ lượt xem, nguồn và hành trình từng phiên.
+Sau khi đặt máy chủ nhận tại tên miền HTTPS của bạn, chép cùng đoạn dưới đây trước `</body>` trên từng website:
 
-**Không biết danh tính khách**, không đếm chính xác số người: một người có thể có nhiều phiên. Không ghi IP, nội dung nhập, mật khẩu, ảnh màn hình hay fingerprint. Thời gian hoạt động không chứng minh khách đã đọc. Chuyển tab không chứng minh khách thoát. Trình chặn, mạng lỗi hoặc tín hiệu DNT/GPC khiến số liệu thiếu. Dữ liệu trình duyệt gửi có thể bị giả; đây không phải hệ thống phát hiện bot hoặc chứng minh người thật.
+```html
+<script defer src="https://do.tenmiencuaban.vn/tracker.js"></script>
+```
 
-Google thường không chuyển từ khóa organic vào referrer. Dùng Google Search Console để xem từ khóa ở mức tổng hợp; không gán từ khóa đó cho từng khách. Bộ mã này không đo từ khóa tìm kiếm nội bộ mặc định vì khách có thể nhập dữ liệu cá nhân. UTM phải là nhãn chiến dịch, không chứa email/số điện thoại.
+Không cần sửa mã cho mỗi web, không cần `data-site`. Tracker tự nhận `location.hostname`. Website xuất hiện sau khi nhận batch đầu tiên (thường khoảng 5 giây). Nếu host mã JS trên CDN riêng, thêm `data-endpoint="https://do.tenmiencuaban.vn/collect"`.
 
-## Chạy thử trên máy của bạn
+Tự đo lượt xem, link/nút đã nhấp, cuộn 25/50/75/100%, thời gian hoạt động, nguồn và trình duyệt. Link `tel:` tự ghi **Bấm gọi điện**, link Zalo tự ghi **Mở Zalo**. Không lấy số điện thoại trong link, nội dung form, mật khẩu, IP hoặc ảnh màn hình. Không biết cuộc gọi đã kết nối hay tin đã gửi. Không suy ra danh tính và không xác minh người thật/bot. DNT/GPC vẫn được tôn trọng.
 
-Cần Python 3.11 trở lên; không cần cài thư viện ngoài.
+Các nút khác có thể đặt nhãn cố định:
+
+```html
+<button data-analytics="Xem báo giá">Xem báo giá</button>
+<form data-analytics="Yêu cầu khảo sát">...</form>
+<a href="/bai-viet/ve-sinh-tam-pin" data-analytics="Bài vệ sinh tấm pin">Đọc bài</a>
+```
+
+Form chỉ ghi sự kiện gửi, không lấy giá trị nhập. Để đo gửi thành công, gọi `SolarAnalytics.track('Khảo sát gửi thành công')` sau khi backend trả thành công. `data-analytics-ignore` trên một vùng bỏ qua đo nhấp trong vùng đó. `SolarAnalytics.stop()`/`start()` tắt/bật đo trong tab.
+
+## Chạy thử
+
+Python 3.11+, không cần thư viện ngoài:
 
 ```powershell
-cd duong-dan-den-web-analytics
+$env:ANALYTICS_ORIGINS='http://127.0.0.1:8790,http://localhost:8790'
 python server.py
 ```
 
-Máy chủ in địa chỉ `http://127.0.0.1:8790` và **mã quản trị riêng**. Mở địa chỉ đó, nhập mã. Mở `http://127.0.0.1:8790/demo`, cuộn và chuyển bài, bấm nút tư vấn. Quay về báo cáo, bấm Làm mới. Dữ liệu thử thực sự được tracker gửi và lưu; không phải số liệu dựng sẵn.
+Mở `http://127.0.0.1:8790/`. Không cần nhập mã hoặc mật khẩu. Mở `/demo`, cuộn và bấm các nút; trở lại báo cáo, Làm mới. Mở thêm `http://localhost:8790/demo` để thử website thứ hai; hai host hiện thành hai website khác nhau.
 
-Kiểm thử: `python -m unittest test_server.py`. Dữ liệu thử nghiệm nằm trong `private-data/analytics.sqlite`; không chia sẻ thư mục này công khai.
+## Cấu hình máy chủ nhận thật
 
-## Cài trên website thật
-
-**Không thể chỉ dán JavaScript rồi tự có báo cáo.** Bạn cần chạy bộ nhận trên máy chủ Python/VPS luôn hoạt động, đặt sau reverse proxy HTTPS. Gói này chưa phải tệp PHP để chép vào DirectAdmin. Website PHP vẫn gắn được JavaScript, nhưng hosting chỉ hỗ trợ PHP cần một máy chủ nhận riêng hoặc chuyển backend sang PHP trước khi cài.
-
-1. Đặt bộ nhận trên máy chủ, tạo mã quản trị dài ngẫu nhiên và cấu hình biến môi trường. Ví dụ Linux:
+GitHub Pages chạy giao diện `index.html`, không chạy Python hoặc lưu lượt truy cập. Bộ nhận cần máy chủ riêng HTTPS luôn hoạt động. Hosting chỉ hỗ trợ PHP chưa chạy được backend Python này.
 
 ```sh
-export ANALYTICS_SITE=thesun
-export ANALYTICS_ORIGINS=https://thesunvn.com.vn,https://www.thesunvn.com.vn
-export ANALYTICS_ADMIN_TOKEN='THAY_BANG_MA_NGAU_NHIEN_DAI_CUA_BAN'
-export ANALYTICS_DB=/var/lib/solar-journey/analytics.sqlite
+export ANALYTICS_ORIGINS=https://thesunvn.com.vn,https://www.thesunvn.com.vn,https://websitekhac.vn
+export ANALYTICS_REPORT_ORIGINS=https://phannohope98-png.github.io
+export ANALYTICS_DB=/var/lib/do-dac/analytics.sqlite
 python3 server.py
 ```
 
-2. Reverse proxy tên miền HTTPS, ví dụ `https://analytics.tenmiencuaban.vn`, về `127.0.0.1:8790`; chạy bằng service tự khởi động. Giữ cổng 8790 nội bộ. Đặt giới hạn request/tốc độ ở proxy; origin allowlist không ngăn người khác giả mạo request. Mã quản trị chỉ nhập ở trang báo cáo, **không chèn vào website/JavaScript**. Sao lưu SQLite bằng công cụ SQLite backup; không chỉ copy tệp đang ghi.
-3. Chép `tracker.js` lên website, rồi đặt đoạn sau trước `</body>` trong layout dùng chung. Thay URL máy chủ nhận:
+`ANALYTICS_ORIGINS` đăng ký các origin được thu thập, phải đúng scheme + hostname + cổng nếu có. Backend kiểm tra tên miền sự kiện khớp Origin. Đây không phải biện pháp chống giả mạo dữ liệu. `www` và tên miền không `www` được hiển thị riêng. Nếu thêm website, thêm origin vào cấu hình rồi khởi động lại server; đoạn nhúng không đổi.
 
-```html
-<script defer src="/assets/tracker.js"
-  data-site="thesun"
-  data-endpoint="https://analytics.tenmiencuaban.vn/collect"></script>
+Đặt reverse proxy HTTPS về `127.0.0.1:8790`, giới hạn request và chạy dưới service. Giữ SQLite ngoài thư mục phục vụ web, sao lưu và đặt thời gian giữ dữ liệu; mặc định 90 ngày, `ANALYTICS_RETENTION_DAYS` từ 1–365. Dọn dữ liệu khi nhận batch tiếp theo.
+
+Trên giao diện GitHub Pages, mở **Mã gắn website & kết nối dữ liệu**, nhập URL HTTPS của máy chủ một lần. Các website xuất hiện tự động từ dữ liệu đã nhận. Mã nhúng được tạo ngay và có nút chép.
+
+**Theo yêu cầu bỏ đăng nhập, API báo cáo không còn xác thực ứng dụng.** Nếu đưa backend ra Internet mà không giới hạn mạng, người biết URL có thể xem báo cáo. Để xem riêng mà không có form đăng nhập ứng dụng, đặt báo cáo sau VPN hoặc quy tắc mạng/proxy; endpoint nhận `/collect` và `/tracker.js` vẫn phục vụ website. CORS không phải cơ chế bảo mật quyền đọc dữ liệu.
+
+## Hiểu báo cáo
+
+- Gọi/Zalo theo trang: biết trang nào dẫn tới liên hệ.
+- Bảng đọc và dừng: lượt xem, giây hoạt động trung bình/lượt, số phiên cuộn ít nhất 75%, số phiên có trang này là trang cuối quan sát, số bấm liên hệ.
+- Luồng chuyển bài: chuyển trang liên tiếp trong cùng phiên; bỏ lượt tải lại cùng đường dẫn.
+- Hành trình: mỗi sự kiện gắn trang và thời gian để xem trình tự.
+- Giây hoạt động không chứng minh đọc; trang cuối quan sát không chứng minh đã thoát. Trình chặn/mạng lỗi/DNT/GPC làm số liệu thiếu.
+- Loại query và fragment, nhưng không gắn vào trang có thông tin cá nhân trong pathname, tài khoản, thanh toán hoặc trang quản trị. UTM không chứa dữ liệu cá nhân. Google organic keywords xem riêng trong Search Console.
+- Báo cáo ngày UTC, tối đa 50.000 sự kiện/website/lần, 200 phiên trong danh sách. Phù hợp thử nghiệm/lưu lượng nhỏ; cần kiểm tra tải trước khi mở rộng. SPA pathname được hỗ trợ; hash route chưa hỗ trợ.
+
+## Kiểm thử
+
+```sh
+python -m unittest test_server.py
+node test_tracker.cjs
 ```
 
-4. Đánh dấu nút bằng nhãn cố định để báo cáo dễ hiểu:
+9 kiểm thử backend và kiểm thử tracker: nhận đa website, tách dữ liệu, chống tên miền ghi đè, không đăng nhập, giới hạn payload, chống ghi trùng, lọc query/trường không được phép, tự chạy, gọi điện không ghi số, mức cuộn, GPC và tắt/bật.
 
-```html
-<a href="https://zalo.me/DUONG_DAN_CUA_BAN"
-   data-analytics="Chat Zalo" data-analytics-goal="Mở Zalo">Chat Zalo</a>
-<a href="/bai-viet/ve-sinh-tam-pin" data-analytics="Bài vệ sinh tấm pin">Đọc bài</a>
-<form data-analytics="Yêu cầu khảo sát">...</form>
-<button onclick="SolarAnalytics.stop()">Tắt đo truy cập</button>
-```
-
-Mục tiêu bấm nút chỉ chứng minh nút được bấm. Để đo form được backend chấp nhận, gọi `SolarAnalytics.track('Yêu cầu đã gửi thành công')` **sau phản hồi thành công**, không gọi ngay khi bấm gửi. Không truyền tên, email, điện thoại hoặc nội dung form vào tên sự kiện.
-
-Tracker mặc định tự chạy, không hiện hộp hỏi, không cần quyền truy cập thiết bị. Phiên ẩn danh dùng sessionStorage, hết hạn sau 30 phút không có sự kiện. Không dùng localStorage để lưu lựa chọn đồng ý. Tín hiệu DNT/GPC vẫn chặn theo dõi. `SolarAnalytics.stop()` dừng và ghi nhớ tắt trong phiên tab; `SolarAnalytics.start()` bật lại.
-
-Nếu website muốn chủ động điều khiển lúc bắt đầu, thêm `data-consent="external"` rồi gọi `SolarAnalytics.start()`. Các tên API `grantConsent`/`revokeConsent` được giữ để tương thích bản cũ. Nhấp link `tel:` tự được đặt tên **Bấm gọi điện**; không ghi số điện thoại và không khẳng định cuộc gọi đã kết nối. Bộ mã không bật yêu cầu quyền micro, camera, vị trí hay truy cập tệp.
-
-## Phạm vi và giới hạn triển khai
-
-- Chỉ dùng trên trang có đường dẫn không chứa dữ liệu cá nhân; không gắn vào trang quản trị, tài khoản, thanh toán hoặc URL chứa token/định danh. Query và fragment bị loại, nhưng dữ liệu cá nhân trong pathname vẫn có thể bị ghi.
-- Không hỗ trợ định tuyến SPA bằng hash; SPA dùng pathname được hỗ trợ.
-- Báo cáo dùng ngày UTC, tối đa 50.000 sự kiện/lần và 200 phiên trong danh sách. Thu nhỏ khoảng thời gian khi đạt giới hạn.
-- Dữ liệu giữ 90 ngày; có thể đặt `ANALYTICS_RETENTION_DAYS` từ 1–365. Dọn dữ liệu diễn ra lúc nhận batch tiếp theo.
-- Máy chủ phù hợp thử nghiệm và lưu lượng nhỏ; cần giới hạn ở proxy, giám sát, sao lưu và kiểm tra tải trước khi mở rộng. Không dùng như hệ thống analytics quy mô lớn.
-- Mã quản trị mặc định đổi mỗi lần khởi động. Đặt biến môi trường để giữ mã cố định. Đóng tab hoặc Khóa báo cáo sẽ xóa mã khỏi bộ nhớ giao diện.
-
-Không có thay đổi nào được thực hiện trên website đang chạy. Sau khi cấu hình server, dùng tab Network để kiểm tra POST `/collect` trả 200 và đối chiếu các sự kiện trong báo cáo.
+Bộ mã chưa được gắn vào website công ty. Không chứa dữ liệu đo thử hoặc thông tin đăng nhập hosting trong repository.

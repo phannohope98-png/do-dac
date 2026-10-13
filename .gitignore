@@ -2,3 +2,5 @@ private-data/
 __pycache__/
 *.sqlite*
 .env
+tmp*/
+test-data-*/
